@@ -319,7 +319,7 @@ rcl_publish(
     return RCL_RET_PUBLISHER_INVALID;  // error already set
   }
   RCL_CHECK_ARGUMENT_FOR_NULL(ros_message, RCL_RET_INVALID_ARGUMENT);
-  rcl_collector_on_message(publisher->impl->collector, 0);
+  rcl_collector_on_message(&publisher->impl->collector, 0);
   if (rmw_publish(publisher->impl->rmw_handle, ros_message, allocation) != RMW_RET_OK) {
     RCL_SET_ERROR_MSG(rmw_get_error_string().str);
     return RCL_RET_ERROR;
@@ -337,7 +337,7 @@ rcl_publish_serialized_message(
     return RCL_RET_PUBLISHER_INVALID;  // error already set
   }
   RCL_CHECK_ARGUMENT_FOR_NULL(serialized_message, RCL_RET_INVALID_ARGUMENT);
-  rcl_collector_on_message(publisher->impl->collector, serialized_message->buffer_length);
+  rcl_collector_on_message(&publisher->impl->collector, serialized_message->buffer_length);
   rmw_ret_t ret = rmw_publish_serialized_message(
     publisher->impl->rmw_handle, serialized_message, allocation);
   if (ret != RMW_RET_OK) {
@@ -360,7 +360,7 @@ rcl_publish_loaned_message(
     return RCL_RET_PUBLISHER_INVALID;  // error already set
   }
   RCL_CHECK_ARGUMENT_FOR_NULL(ros_message, RCL_RET_INVALID_ARGUMENT);
-  rcl_collector_on_message(publisher->impl->collector, 0);
+  rcl_collector_on_message(&publisher->impl->collector, 0);
   rmw_ret_t ret = rmw_publish_loaned_message(publisher->impl->rmw_handle, ros_message, allocation);
   if (ret != RMW_RET_OK) {
     RCL_SET_ERROR_MSG(rmw_get_error_string().str);
