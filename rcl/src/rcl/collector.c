@@ -17,6 +17,8 @@ extern "C"
 {
 #endif
 
+#include "rcutils/logging_macros.h"
+
 #include "./collector.h"
 
 rcl_collector_t
@@ -30,14 +32,14 @@ rcl_ret_t
 rcl_collector_init(
     rcl_collector_t * collector)
 {
-    return RCL_RET_ERROR;
+    return RCL_RET_OK;
 }
 
 rcl_ret_t
 rcl_collector_fini(
     rcl_collector_t * collector)
 {
-    return RCL_RET_ERROR;
+    return RCL_RET_OK;
 }
 
 rcl_ret_t
@@ -45,7 +47,9 @@ rcl_collector_on_message(
     rcl_collector_t * collector,
     size_t size)
 {
-    return RCL_RET_ERROR;
+    RCUTILS_LOG_DEBUG_NAMED(
+        ROS_PACKAGE_NAME, "On message with size %zu", size);
+    return RCL_RET_OK;
 }
 
 #ifdef __cplusplus

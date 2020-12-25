@@ -25,6 +25,9 @@ extern "C"
 
 typedef struct
 {
+    // associated service client for reporting the model
+
+    // statistics related
 
 } rcl_collector_t;
 
