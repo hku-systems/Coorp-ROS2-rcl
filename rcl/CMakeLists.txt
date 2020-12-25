@@ -33,6 +33,7 @@ endif()
 set(${PROJECT_NAME}_sources
   src/rcl/arguments.c
   src/rcl/client.c
+  src/rcl/collector.c
   src/rcl/common.c
   src/rcl/context.c
   src/rcl/domain_id.c
