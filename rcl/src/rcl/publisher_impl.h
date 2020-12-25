@@ -19,12 +19,15 @@
 
 #include "rcl/publisher.h"
 
+#include "./collector.h"
+
 typedef struct rcl_publisher_impl_t
 {
   rcl_publisher_options_t options;
   rmw_qos_profile_t actual_qos;
   rcl_context_t * context;
   rmw_publisher_t * rmw_handle;
+  rcl_collector_t collector;
 } rcl_publisher_impl_t;
 
 #endif  // RCL__PUBLISHER_IMPL_H_
