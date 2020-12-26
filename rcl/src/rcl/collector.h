@@ -20,15 +20,35 @@ extern "C"
 {
 #endif
 
+#include "rcl/allocator.h"
 #include "rcl/types.h"
 #include "rcl/visibility_control.h"
+#include "rcl/time.h"
+
+typedef struct
+{
+    // traffic model parameter
+    double a, b, sigma_t;
+    double s;
+    double sigma_s;
+    double g;
+} traffic_model_t;
 
 typedef struct
 {
     // associated service client for reporting the model
 
-    // statistics related
+    //
+    rcl_clock_t clock;
 
+    // time history
+    double *times;
+    // size history
+    double *sizes;
+    size_t head, tail;
+    unsigned int count;  // the total number of samples
+
+    traffic_model_t traffic_model;
 } rcl_collector_t;
 
 RCL_LOCAL
@@ -38,7 +58,8 @@ rcl_get_zero_initialized_collector();
 RCL_LOCAL
 rcl_ret_t
 rcl_collector_init(
-    rcl_collector_t * collector
+    rcl_collector_t * collector,
+    rcl_allocator_t * allocator
 );
 
 RCL_LOCAL

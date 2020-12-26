@@ -197,7 +197,7 @@ rcl_publisher_init(
   publisher->impl->context = node->context;
   // collector
   publisher->impl->collector = rcl_get_zero_initialized_collector();
-  rcl_collector_init(&publisher->impl->collector);
+  rcl_collector_init(&publisher->impl->collector, allocator);
   TRACEPOINT(
     rcl_publisher_init,
     (const void *)publisher,
