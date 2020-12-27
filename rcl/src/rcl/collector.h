@@ -31,7 +31,7 @@ typedef struct
     double a, b, sigma_t;
     double s;
     double sigma_s;
-    double g;
+    bool initialized;
 } traffic_model_t;
 
 typedef struct

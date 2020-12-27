@@ -60,17 +60,21 @@ rcl_collector_fini(
 rcl_ret_t
 rcl_collector_on_message(
     rcl_collector_t * collector,
-    size_t size)
+    size_t param_size)
 {
-    rcl_time_point_value_t time;
-    rcl_clock_get_now(&collector->clock, &time);
+    rcl_time_point_value_t param_time;
+    rcl_clock_get_now(&collector->clock, &param_time);
+
+    double time = ((double)param_time)*1e-9;
+    double size = param_size;
+
     RCUTILS_LOG_DEBUG_NAMED(
-        ROS_PACKAGE_NAME "_collector", "On message with size %zu time %f", size, time*1e-9);
+        ROS_PACKAGE_NAME "_collector", "On message with size %zu time %f", param_size, time);
 
     // append time log
     if ((collector->tail+1)%(HISTORY_LENGTH+1) == collector->head)
         collector->head = (collector->head+1)%(HISTORY_LENGTH+1);
-    collector->times[collector->tail] = time*1e-9;
+    collector->times[collector->tail] = time;
     collector->sizes[collector->tail] = size;
     collector->tail = (collector->tail+1)%(HISTORY_LENGTH+1);
     ++collector->count;
@@ -79,14 +83,14 @@ rcl_collector_on_message(
         return RCL_RET_OK;
 
     // recompute time model if the prediction is inaccurate
-    double time_pred =
-        collector->traffic_model.a * (collector->count-1)
-        + collector->traffic_model.b;
-    RCUTILS_LOG_DEBUG_NAMED(
-        ROS_PACKAGE_NAME "_collector", "Prediction %f*%d+%f=%f",
-            collector->traffic_model.a, collector->count-1, collector->traffic_model.b,
-            time_pred);
-    if (true) {
+    double time_pred = NAN;
+    if (collector->traffic_model.initialized) {
+        time_pred = collector->traffic_model.a*round((time - collector->traffic_model.b) / collector->traffic_model.a)
+            + collector->traffic_model.b;
+        RCUTILS_LOG_DEBUG_NAMED(
+            ROS_PACKAGE_NAME "_collector", "Predicted time %f", time_pred);
+    }
+    if (!collector->traffic_model.initialized || true) {
         double n = (collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1);
         double sum_x = (n-1)*n/2,  // sum of {0, 1, 2, ...}
               sum_x2 = (n-1)*n*(2*n-1)/6;  // sum of {0^2, 1^2, 2^2, ...}
@@ -105,7 +109,7 @@ rcl_collector_on_message(
             double tmp = (a*k+b-collector->times[cur]);
             tmp_sum += tmp*tmp;
         }
-        double sigma = sqrtf(tmp_sum/(n-2));
+        double sigma = sqrt(tmp_sum/(n-2));
 
         // update model
         collector->traffic_model.a = a;
@@ -118,7 +122,7 @@ rcl_collector_on_message(
 
     // recompute size model if the probability is rare
 
-    // estimate g
+    collector->traffic_model.initialized = true;
 
     return RCL_RET_OK;
 }
