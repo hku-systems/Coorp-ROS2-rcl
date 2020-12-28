@@ -140,7 +140,7 @@ rcl_collector_on_message(
         RCUTILS_LOG_DEBUG_NAMED(
             ROS_PACKAGE_NAME "_collector", "Predicted time %f", time_pred);
     }
-    if (!collector->traffic_model.initialized || true) {
+    if (!collector->traffic_model.initialized || fabs(time-time_pred) > 3*collector->traffic_model.sigma_t) {
         double n = (collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1);
         double sum_x = (n-1)*n/2,  // sum of {0, 1, 2, ...}
               sum_x2 = (n-1)*n*(2*n-1)/6;  // sum of {0^2, 1^2, 2^2, ...}
