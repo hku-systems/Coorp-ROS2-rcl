@@ -26,6 +26,7 @@ extern "C"
 #include "./collector.h"
 
 #define HISTORY_LENGTH 100
+#define UNSTABLE 2
 #define WARMUP 10
 
 rcl_collector_t
@@ -104,6 +105,10 @@ rcl_collector_on_message(
     rcl_collector_t * collector,
     size_t param_size)
 {
+    ++collector->count;
+    if (collector->count < UNSTABLE)
+        return RCL_RET_OK;
+
     rcl_time_point_value_t param_time;
 
     if (RCL_RET_OK != rcl_clock_get_now(&collector->clock, &param_time)) {
@@ -123,9 +128,8 @@ rcl_collector_on_message(
     collector->times[collector->tail] = time;
     collector->sizes[collector->tail] = size;
     collector->tail = (collector->tail+1)%(HISTORY_LENGTH+1);
-    ++collector->count;
 
-    if (collector->count < WARMUP)
+    if ((collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1) < WARMUP)
         return RCL_RET_OK;
 
     // recompute time model if the prediction is inaccurate
