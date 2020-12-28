@@ -201,7 +201,7 @@ rcl_publisher_init_internal(
     publisher->impl->collector = (rcl_collector_t *)allocator->allocate(
       sizeof(rcl_collector_t), allocator->state);
     *publisher->impl->collector = rcl_get_zero_initialized_collector();
-    rcl_collector_init(publisher->impl->collector, node, allocator);
+    rcl_collector_init(publisher->impl->collector, node);
   } else {
     publisher->impl->collector = NULL;
   }
@@ -281,7 +281,7 @@ rcl_publisher_fini(rcl_publisher_t * publisher, rcl_node_t * node)
       result = RCL_RET_ERROR;
     }
     if (publisher->impl->collector) {
-      rcl_collector_fini(publisher->impl->collector);
+      rcl_collector_fini(publisher->impl->collector, node);
       allocator.deallocate(publisher->impl->collector, allocator.state);
     }
     allocator.deallocate(publisher->impl, allocator.state);

@@ -37,35 +37,65 @@ rcl_get_zero_initialized_collector()
 
 rcl_ret_t
 rcl_collector_init(
-    rcl_collector_t *collector, const rcl_node_t *node, rcl_allocator_t *allocator)
+    rcl_collector_t *collector, const rcl_node_t *node)
 {
-    rcl_steady_clock_init(&collector->clock, allocator);
-    collector->times = allocator->allocate(
+    rcutils_allocator_t allocator = rcutils_get_default_allocator();
+
+    if (RCL_RET_OK !=
+            rcl_steady_clock_init(&collector->clock, &allocator)) {
+        RCUTILS_SET_ERROR_MSG("Failed to init clock for collector");
+        return RCL_RET_ERROR;
+    }
+
+    collector->times = allocator.allocate(
         sizeof(double)*(HISTORY_LENGTH+1),
-        allocator->state);
-    collector->sizes = allocator->allocate(
+        allocator.state);
+    collector->sizes = allocator.allocate(
         sizeof(double)*(HISTORY_LENGTH+1),
-        allocator->state);
-    collector->publisher = allocator->allocate(
-        sizeof(rcl_publisher_t), allocator->state);
+        allocator.state);
+
+    collector->publisher = rcl_get_zero_initialized_publisher();
     rcl_publisher_options_t options = rcl_publisher_get_default_options();  // TODO: we may need non-default options
     const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, TrafficModel);
     if(RCL_RET_OK != rcl_publisher_init_internal(
-            collector->publisher, node, ts, "ros2_traffic_model", &options, false)) {
-        RCUTILS_LOG_ERROR_NAMED(
-            ROS_PACKAGE_NAME "_collector", "Failed to create publisher on topic 'ros2_traffic_model'");
+            &collector->publisher, node, ts, "ros2_traffic_model", &options, false)) {
         RCUTILS_SET_ERROR_MSG("Failed to create publisher on topic 'ros2_traffic_model'");
         return RCL_RET_ERROR;
     }
+
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "Collector initialized");
+
     return RCL_RET_OK;
 }
 
 rcl_ret_t
 rcl_collector_fini(
-    rcl_collector_t * collector)
+    rcl_collector_t * collector, rcl_node_t *node)
 {
+    rcutils_allocator_t allocator = rcutils_get_default_allocator();
+
+    if (RCL_RET_OK
+            != rcl_publisher_fini(&collector->publisher, node)) {
+        RCUTILS_SET_ERROR_MSG("Failed to finalize publisher");
+        return RCL_RET_ERROR;
+    }
+
+    if (RCL_RET_OK
+            != rcl_publisher_fini(&collector->publisher, node)) {
+        RCUTILS_SET_ERROR_MSG("Failed to finalize publisher");
+        return RCL_RET_ERROR;
+    }
+
+    if (RCL_RET_OK
+            != rcl_clock_fini(&collector->clock)) {
+        RCUTILS_SET_ERROR_MSG("Failed to finalize clock");
+        return RCL_RET_ERROR;
+    }
+
+    allocator.deallocate(collector->times, allocator.state);
+    allocator.deallocate(collector->sizes, allocator.state);
+
     return RCL_RET_OK;
 }
 
@@ -75,7 +105,11 @@ rcl_collector_on_message(
     size_t param_size)
 {
     rcl_time_point_value_t param_time;
-    rcl_clock_get_now(&collector->clock, &param_time);
+
+    if (RCL_RET_OK != rcl_clock_get_now(&collector->clock, &param_time)) {
+        RCUTILS_SET_ERROR_MSG("Failed to get current time");
+        return RCL_RET_ERROR;
+    }
 
     double time = ((double)param_time)*1e-9;
     double size = param_size;
@@ -136,7 +170,7 @@ rcl_collector_on_message(
         msg->sigma_t = collector->traffic_model.sigma_t;
         msg->s = collector->traffic_model.s;
         msg->sigma_s = collector->traffic_model.sigma_s;
-        rcl_ret_t ret_pub = rcl_publish(collector->publisher, msg, NULL);
+        rcl_ret_t ret_pub = rcl_publish(&collector->publisher, msg, NULL);
         if (RCL_RET_OK == ret_pub) {
             RCUTILS_LOG_DEBUG_NAMED(
                 ROS_PACKAGE_NAME "_collector", "Successfully published new model");
