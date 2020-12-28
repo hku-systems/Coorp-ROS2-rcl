@@ -184,6 +184,17 @@ RCL_WARN_UNUSED
 rcl_ret_t
 rcl_publisher_fini(rcl_publisher_t * publisher, rcl_node_t * node);
 
+RCL_LOCAL
+RCL_WARN_UNUSED
+rcl_ret_t
+rcl_publisher_init_internal(
+  rcl_publisher_t * publisher,
+  const rcl_node_t * node,
+  const rosidl_message_type_support_t * type_support,
+  const char * topic_name,
+  const rcl_publisher_options_t * options,
+  bool collector_needed);
+
 /// Return the default publisher options in a rcl_publisher_options_t.
 /**
  * The defaults are:

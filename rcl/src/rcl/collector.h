@@ -24,6 +24,7 @@ extern "C"
 #include "rcl/types.h"
 #include "rcl/visibility_control.h"
 #include "rcl/time.h"
+#include "rcl/publisher.h"
 
 typedef struct
 {
@@ -36,7 +37,8 @@ typedef struct
 
 typedef struct
 {
-    // associated service client for reporting the model
+    // associated publisher for reporting the model
+    rcl_publisher_t *publisher;
 
     //
     rcl_clock_t clock;
@@ -59,6 +61,7 @@ RCL_LOCAL
 rcl_ret_t
 rcl_collector_init(
     rcl_collector_t * collector,
+    const rcl_node_t * node,
     rcl_allocator_t * allocator
 );
 

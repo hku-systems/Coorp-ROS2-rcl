@@ -21,6 +21,7 @@ extern "C"
 
 #include "rcutils/logging_macros.h"
 #include "rcutils/time.h"
+#include "rcl_interfaces/msg/traffic_model.h"
 
 #include "./collector.h"
 
@@ -36,7 +37,7 @@ rcl_get_zero_initialized_collector()
 
 rcl_ret_t
 rcl_collector_init(
-    rcl_collector_t * collector, rcl_allocator_t *allocator)
+    rcl_collector_t *collector, const rcl_node_t *node, rcl_allocator_t *allocator)
 {
     rcl_steady_clock_init(&collector->clock, allocator);
     collector->times = allocator->allocate(
@@ -45,6 +46,17 @@ rcl_collector_init(
     collector->sizes = allocator->allocate(
         sizeof(double)*(HISTORY_LENGTH+1),
         allocator->state);
+    collector->publisher = allocator->allocate(
+        sizeof(rcl_publisher_t), allocator->state);
+    rcl_publisher_options_t options = rcl_publisher_get_default_options();  // TODO: we may need non-default options
+    const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, TrafficModel);
+    if(RCL_RET_OK != rcl_publisher_init_internal(
+            collector->publisher, node, ts, "ros2_traffic_model", &options, false)) {
+        RCUTILS_LOG_ERROR_NAMED(
+            ROS_PACKAGE_NAME "_collector", "Failed to create publisher on topic 'ros2_traffic_model'");
+        RCUTILS_SET_ERROR_MSG("Failed to create publisher on topic 'ros2_traffic_model'");
+        return RCL_RET_ERROR;
+    }
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "Collector initialized");
     return RCL_RET_OK;
@@ -118,6 +130,22 @@ rcl_collector_on_message(
 
         RCUTILS_LOG_DEBUG_NAMED(
             ROS_PACKAGE_NAME "_collector", "New time model a=%f b=%f sigma=%f", a, b, sigma);
+        rcl_interfaces__msg__TrafficModel *msg = rcl_interfaces__msg__TrafficModel__create();
+        msg->a = collector->traffic_model.a;
+        msg->b = collector->traffic_model.b;
+        msg->sigma_t = collector->traffic_model.sigma_t;
+        msg->s = collector->traffic_model.s;
+        msg->sigma_s = collector->traffic_model.sigma_s;
+        rcl_ret_t ret_pub = rcl_publish(collector->publisher, msg, NULL);
+        if (RCL_RET_OK == ret_pub) {
+            RCUTILS_LOG_DEBUG_NAMED(
+                ROS_PACKAGE_NAME "_collector", "Successfully published new model");
+        } else {
+            RCUTILS_LOG_ERROR_NAMED(
+                ROS_PACKAGE_NAME "_collector", "Failed publishing new model, '%s'", rcutils_get_error_string().str);
+            rcutils_reset_error();
+        }
+        rcl_interfaces__msg__TrafficModel__destroy(msg);
     }
 
     // recompute size model if the probability is rare
