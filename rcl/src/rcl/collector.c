@@ -134,6 +134,8 @@ rcl_collector_on_message(
     if ((collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1) < WARMUP)
         return RCL_RET_OK;
 
+    bool model_updated = false;
+
     // recompute time model if the prediction is inaccurate
     double time_pred = NAN;
     if (collector->traffic_model.initialized) {
@@ -168,8 +170,36 @@ rcl_collector_on_message(
         collector->traffic_model.b = b;
         collector->traffic_model.sigma_t = sigma;
 
+        model_updated = true;
         RCUTILS_LOG_DEBUG_NAMED(
             ROS_PACKAGE_NAME "_collector", "New time model a=%f b=%f sigma=%f", a, b, sigma);
+    }
+
+    // recompute size model if the probability is rare
+    if (!collector->traffic_model.initialized || fabs(size - collector->traffic_model.s) > 3*collector->traffic_model.sigma_s) {
+        double n = (collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1);
+
+        double sum_x = 0, sum_x2 = 0;
+        for (size_t cur = collector->head; cur != collector->tail; cur=(cur+1)%(HISTORY_LENGTH+1)) {
+            sum_x += collector->sizes[cur];
+            sum_x2 += collector->sizes[cur]*collector->sizes[cur];
+        }
+
+        // sigma
+        double s = sum_x / n;
+        double sigma = sqrt((n*sum_x2-sum_x*sum_x)/n/(n-1));
+
+        // update model
+        collector->traffic_model.s = s;
+        collector->traffic_model.sigma_s = sigma;
+
+        RCUTILS_LOG_DEBUG_NAMED(
+            ROS_PACKAGE_NAME "_collector", "New size model s=%f sigma=%f", s, sigma);
+    }
+
+    collector->traffic_model.initialized = true;
+
+    if (model_updated) {
         rcl_interfaces__msg__TrafficModel *msg = rcl_interfaces__msg__TrafficModel__create();
         msg->a = collector->traffic_model.a;
         msg->b = collector->traffic_model.b;
@@ -187,10 +217,6 @@ rcl_collector_on_message(
         }
         rcl_interfaces__msg__TrafficModel__destroy(msg);
     }
-
-    // recompute size model if the probability is rare
-
-    collector->traffic_model.initialized = true;
 
     return RCL_RET_OK;
 }
