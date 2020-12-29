@@ -38,7 +38,7 @@ rcl_get_zero_initialized_collector()
 
 rcl_ret_t
 rcl_collector_init(
-    rcl_collector_t *collector, const rcl_node_t *node)
+    rcl_collector_t *collector, const rcl_node_t *node, const rosidl_message_type_support_t *type_support)
 {
     rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
@@ -47,6 +47,8 @@ rcl_collector_init(
         RCUTILS_SET_ERROR_MSG("Failed to init clock for collector");
         return RCL_RET_ERROR;
     }
+
+    collector->ts = type_support;
 
     collector->times = allocator.allocate(
         sizeof(double)*(HISTORY_LENGTH+1),

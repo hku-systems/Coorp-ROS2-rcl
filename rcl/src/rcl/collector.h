@@ -43,6 +43,9 @@ typedef struct
     //
     rcl_clock_t clock;
 
+    // type support corresponding to the message of this publisher
+    const rosidl_message_type_support_t * ts;
+
     // time history
     double *times;
     // size history
@@ -61,7 +64,8 @@ RCL_LOCAL
 rcl_ret_t
 rcl_collector_init(
     rcl_collector_t * collector,
-    const rcl_node_t * node
+    const rcl_node_t * node,
+    const rosidl_message_type_support_t *ts
 );
 
 RCL_LOCAL

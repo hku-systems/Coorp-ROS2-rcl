@@ -201,7 +201,7 @@ rcl_publisher_init_internal(
     publisher->impl->collector = (rcl_collector_t *)allocator->allocate(
       sizeof(rcl_collector_t), allocator->state);
     *publisher->impl->collector = rcl_get_zero_initialized_collector();
-    rcl_collector_init(publisher->impl->collector, node);
+    rcl_collector_init(publisher->impl->collector, node, type_support);
   } else {
     publisher->impl->collector = NULL;
   }
@@ -343,9 +343,22 @@ rcl_publish(
   }
   RCL_CHECK_ARGUMENT_FOR_NULL(ros_message, RCL_RET_INVALID_ARGUMENT);
   if (publisher->impl->collector) {
-    rcl_collector_on_message(publisher->impl->collector, 0);
-  }
-  if (rmw_publish(publisher->impl->rmw_handle, ros_message, allocation) != RMW_RET_OK) {
+    // serialize the message
+    rmw_serialized_message_t serialized_message = rmw_get_zero_initialized_serialized_message();
+    rcutils_allocator_t allocator = rcutils_get_default_allocator();
+    rmw_serialized_message_init(&serialized_message, 0, &allocator);
+    if (rmw_serialize(ros_message, publisher->impl->collector->ts, &serialized_message) != RMW_RET_OK) {
+      RCL_SET_ERROR_MSG(rmw_get_error_string().str);
+      return RCL_RET_ERROR;
+    }
+
+    rcl_collector_on_message(publisher->impl->collector, serialized_message.buffer_length);
+
+    if (rmw_publish_serialized_message(publisher->impl->rmw_handle, &serialized_message, allocation) != RMW_RET_OK) {
+      RCL_SET_ERROR_MSG(rmw_get_error_string().str);
+      return RCL_RET_ERROR;
+    }
+  } else if (rmw_publish(publisher->impl->rmw_handle, ros_message, allocation) != RMW_RET_OK) {
     RCL_SET_ERROR_MSG(rmw_get_error_string().str);
     return RCL_RET_ERROR;
   }
