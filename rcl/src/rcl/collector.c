@@ -18,6 +18,7 @@ extern "C"
 #endif
 
 #include <math.h>
+#include <stdlib.h>
 
 #include "rcutils/logging_macros.h"
 #include "rcutils/time.h"
@@ -56,6 +57,8 @@ rcl_collector_init(
     collector->sizes = allocator.allocate(
         sizeof(double)*(HISTORY_LENGTH+1),
         allocator.state);
+
+    collector->id = (uint64_t)rand();
 
     collector->publisher = rcl_get_zero_initialized_publisher();
     rcl_publisher_options_t options = rcl_publisher_get_default_options();  // TODO: we may need non-default options
@@ -201,6 +204,7 @@ rcl_collector_on_message(
 
     if (model_updated) {
         rcl_interfaces__msg__TrafficModel *msg = rcl_interfaces__msg__TrafficModel__create();
+        msg->id = collector->id;
         msg->a = collector->traffic_model.a;
         msg->b = collector->traffic_model.b;
         msg->sigma_t = collector->traffic_model.sigma_t;

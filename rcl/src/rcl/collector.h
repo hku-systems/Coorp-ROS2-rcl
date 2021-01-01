@@ -54,6 +54,8 @@ typedef struct
     unsigned int count;  // the total number of samples
 
     traffic_model_t traffic_model;
+
+    uint64_t id;
 } rcl_collector_t;
 
 RCL_LOCAL
