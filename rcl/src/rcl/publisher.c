@@ -249,8 +249,10 @@ rcl_publisher_init(
   const rcl_publisher_options_t * options
 )
 {
+  const char * prefix = "urg_";
+  bool collector_needed = strncmp(prefix, topic_name, strlen(prefix)) == 0;
   return rcl_publisher_init_internal(
-    publisher, node, type_support, topic_name, options, true);
+    publisher, node, type_support, topic_name, options, collector_needed);
 }
 
 rcl_ret_t
