@@ -27,7 +27,7 @@ extern "C"
 #include "./collector.h"
 
 #define HISTORY_LENGTH 100
-#define UNSTABLE 2
+#define UNSTABLE 3
 #define WARMUP 10
 
 rcl_collector_t
@@ -120,7 +120,7 @@ rcl_collector_on_message(
     size_t param_size)
 {
     ++collector->count;
-    if (collector->count < UNSTABLE)
+    if (collector->count <= UNSTABLE)
         return RCL_RET_OK;
 
     rcl_time_point_value_t param_time;
