@@ -63,11 +63,20 @@ rcl_collector_init(
     collector->publisher = rcl_get_zero_initialized_publisher();
     rcl_publisher_options_t options = rcl_publisher_get_default_options();  // TODO: we may need non-default options
     const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, TrafficModel);
+
+    const char * machine_id = getenv("ROS_MACHINE_ID");
+    const char * report_topic_prefix = "ros_traffic_model_";
+    char * report_topic = allocator.allocate(
+        sizeof(char)*(strlen(report_topic_prefix)+strlen(machine_id)+1),
+        allocator.state);
+    strcpy(report_topic, report_topic_prefix);
+    strcat(report_topic, machine_id);
     if(RCL_RET_OK != rcl_publisher_init_internal(
-            &collector->publisher, node, ts, "ros2_traffic_model", &options, false)) {
+            &collector->publisher, node, ts, report_topic, &options, false)) {
         RCUTILS_SET_ERROR_MSG("Failed to create publisher on topic 'ros2_traffic_model'");
         return RCL_RET_ERROR;
     }
+    allocator.deallocate(report_topic, allocator.state);
 
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "Collector initialized");

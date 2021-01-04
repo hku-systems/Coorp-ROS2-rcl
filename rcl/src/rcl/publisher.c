@@ -250,7 +250,8 @@ rcl_publisher_init(
 )
 {
   const char * prefix = "urg_";
-  bool collector_needed = strncmp(prefix, topic_name, strlen(prefix)) == 0;
+  bool collector_needed = 
+    strncmp(prefix, topic_name, strlen(prefix)) == 0 && getenv("ROS_MACHINE_ID") != NULL;
   return rcl_publisher_init_internal(
     publisher, node, type_support, topic_name, options, collector_needed);
 }
