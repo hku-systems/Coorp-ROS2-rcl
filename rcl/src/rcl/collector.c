@@ -81,7 +81,7 @@ rcl_collector_init(
     collector->topic_name = topic_name;
 
     RCUTILS_LOG_DEBUG_NAMED(
-        ROS_PACKAGE_NAME "_collector", "Collector initialized");
+        ROS_PACKAGE_NAME "_collector", "Collector initialized for topic %s", collector->topic_name);
 
     return RCL_RET_OK;
 }
@@ -207,6 +207,7 @@ rcl_collector_on_message(
         collector->traffic_model.s = s;
         collector->traffic_model.sigma_s = sigma;
 
+        model_updated = true;
         RCUTILS_LOG_DEBUG_NAMED(
             ROS_PACKAGE_NAME "_collector", "New size model for %s(%zu): s=%f sigma=%f", collector->topic_name, collector->id, s, sigma);
     }
