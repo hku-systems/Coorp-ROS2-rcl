@@ -39,7 +39,7 @@ rcl_get_zero_initialized_collector()
 
 rcl_ret_t
 rcl_collector_init(
-    rcl_collector_t *collector, const rcl_node_t *node, const rosidl_message_type_support_t *type_support)
+    rcl_collector_t *collector, const rcl_node_t *node, const rosidl_message_type_support_t *type_support, const char *topic_name)
 {
     rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
@@ -77,6 +77,8 @@ rcl_collector_init(
         return RCL_RET_ERROR;
     }
     allocator.deallocate(report_topic, allocator.state);
+
+    collector->topic_name = topic_name;
 
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "Collector initialized");
@@ -184,7 +186,7 @@ rcl_collector_on_message(
 
         model_updated = true;
         RCUTILS_LOG_DEBUG_NAMED(
-            ROS_PACKAGE_NAME "_collector", "New time model a=%f b=%f sigma=%f", a, b, sigma);
+            ROS_PACKAGE_NAME "_collector", "New time model for %s(%zu): a=%f b=%f sigma=%f", collector->topic_name, collector->id, a, b, sigma);
     }
 
     // recompute size model if the probability is rare
@@ -206,7 +208,7 @@ rcl_collector_on_message(
         collector->traffic_model.sigma_s = sigma;
 
         RCUTILS_LOG_DEBUG_NAMED(
-            ROS_PACKAGE_NAME "_collector", "New size model s=%f sigma=%f", s, sigma);
+            ROS_PACKAGE_NAME "_collector", "New size model for %s(%zu): s=%f sigma=%f", collector->topic_name, collector->id, s, sigma);
     }
 
     collector->traffic_model.initialized = true;

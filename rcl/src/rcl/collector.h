@@ -37,6 +37,9 @@ typedef struct
 
 typedef struct
 {
+    // the name of the topic being collected
+    const char *topic_name;
+
     // associated publisher for reporting the model
     rcl_publisher_t publisher;
 
@@ -67,7 +70,8 @@ rcl_ret_t
 rcl_collector_init(
     rcl_collector_t * collector,
     const rcl_node_t * node,
-    const rosidl_message_type_support_t *ts
+    const rosidl_message_type_support_t *ts,
+    const char *topic_name
 );
 
 RCL_LOCAL

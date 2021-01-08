@@ -201,7 +201,7 @@ rcl_publisher_init_internal(
     publisher->impl->collector = (rcl_collector_t *)allocator->allocate(
       sizeof(rcl_collector_t), allocator->state);
     *publisher->impl->collector = rcl_get_zero_initialized_collector();
-    rcl_collector_init(publisher->impl->collector, node, type_support);
+    rcl_collector_init(publisher->impl->collector, node, type_support, topic_name);
   } else {
     publisher->impl->collector = NULL;
   }
