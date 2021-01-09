@@ -43,9 +43,6 @@ typedef struct
     // associated publisher for reporting the model
     rcl_publisher_t publisher;
 
-    //
-    rcl_clock_t clock;
-
     // type support corresponding to the message of this publisher
     const rosidl_message_type_support_t * ts;
 

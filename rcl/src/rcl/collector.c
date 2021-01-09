@@ -19,9 +19,9 @@ extern "C"
 
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "rcutils/logging_macros.h"
-#include "rcutils/time.h"
 #include "rcl_interfaces/msg/traffic_model.h"
 
 #include "./collector.h"
@@ -42,12 +42,6 @@ rcl_collector_init(
     rcl_collector_t *collector, const rcl_node_t *node, const rosidl_message_type_support_t *type_support, const char *topic_name)
 {
     rcutils_allocator_t allocator = rcutils_get_default_allocator();
-
-    if (RCL_RET_OK !=
-            rcl_steady_clock_init(&collector->clock, &allocator)) {
-        RCUTILS_SET_ERROR_MSG("Failed to init clock for collector");
-        return RCL_RET_ERROR;
-    }
 
     collector->ts = type_support;
 
@@ -104,12 +98,6 @@ rcl_collector_fini(
         return RCL_RET_ERROR;
     }
 
-    if (RCL_RET_OK
-            != rcl_clock_fini(&collector->clock)) {
-        RCUTILS_SET_ERROR_MSG("Failed to finalize clock");
-        return RCL_RET_ERROR;
-    }
-
     allocator.deallocate(collector->times, allocator.state);
     allocator.deallocate(collector->sizes, allocator.state);
 
@@ -121,13 +109,10 @@ rcl_collector_on_message(
     rcl_collector_t * collector,
     size_t param_size)
 {
-    rcl_time_point_value_t param_time;
-    if (RCL_RET_OK != rcl_clock_get_now(&collector->clock, &param_time)) {
-        RCUTILS_SET_ERROR_MSG("Failed to get current time");
-        return RCL_RET_ERROR;
-    }
+    struct timespec param_time;
+    clock_gettime(CLOCK_MONOTONIC, &param_time);
 
-    double time = ((double)param_time)*1e-9;
+    double time = ((double)param_time.tv_sec + (double)param_time.tv_nsec*1e-9);
     double size = param_size;
 
     RCUTILS_LOG_DEBUG_NAMED(
