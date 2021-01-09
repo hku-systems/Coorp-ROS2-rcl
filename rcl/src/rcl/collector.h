@@ -33,6 +33,7 @@ typedef struct
     double s;
     double sigma_s;
     bool initialized;
+    double last_update;
 } traffic_model_t;
 
 typedef struct
@@ -51,7 +52,7 @@ typedef struct
     // size history
     double *sizes;
     size_t head, tail;
-    unsigned int count;  // the total number of samples
+    size_t count;  // the total number of samples
 
     traffic_model_t traffic_model;
 

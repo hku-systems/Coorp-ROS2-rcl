@@ -27,8 +27,9 @@ extern "C"
 #include "./collector.h"
 
 #define HISTORY_LENGTH 100
-#define UNSTABLE 3
 #define WARMUP 10
+
+const double MODEL_FRESHNESS = 15;
 
 rcl_collector_t
 rcl_get_zero_initialized_collector()
@@ -74,6 +75,9 @@ rcl_collector_init(
 
     collector->topic_name = topic_name;
 
+    // initialize traffic model
+    collector->traffic_model.initialized = false;
+
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "Collector initialized for topic %s", collector->topic_name);
 
@@ -104,23 +108,24 @@ rcl_collector_fini(
     return RCL_RET_OK;
 }
 
+double get_local_time() {
+    struct timespec param_time;
+    clock_gettime(CLOCK_MONOTONIC, &param_time);
+    return ((double)param_time.tv_sec + (double)param_time.tv_nsec*1e-9);
+}
+
 rcl_ret_t
 rcl_collector_on_message(
     rcl_collector_t * collector,
     size_t param_size)
 {
-    struct timespec param_time;
-    clock_gettime(CLOCK_MONOTONIC, &param_time);
-
-    double time = ((double)param_time.tv_sec + (double)param_time.tv_nsec*1e-9);
+    double time = get_local_time();
     double size = param_size;
 
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "On message with size %zu time %f", param_size, time);
 
     ++collector->count;
-    if (collector->count <= UNSTABLE)
-        return RCL_RET_OK;
 
     // append time log
     if ((collector->tail+1)%(HISTORY_LENGTH+1) == collector->head)
@@ -133,6 +138,7 @@ rcl_collector_on_message(
         return RCL_RET_OK;
 
     bool model_updated = false;
+    bool force_update = !collector->traffic_model.initialized || (time - collector->traffic_model.last_update > MODEL_FRESHNESS);
 
     // recompute time model if the prediction is inaccurate
     double time_pred = NAN;
@@ -142,7 +148,7 @@ rcl_collector_on_message(
         RCUTILS_LOG_DEBUG_NAMED(
             ROS_PACKAGE_NAME "_collector", "Predicted time %f", time_pred);
     }
-    if (!collector->traffic_model.initialized || fabs(time-time_pred) > 3*collector->traffic_model.sigma_t) {
+    if (force_update || fabs(time-time_pred) > 3*collector->traffic_model.sigma_t) {
         double n = (collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1);
         double sum_x = (n-1)*n/2,  // sum of {0, 1, 2, ...}
               sum_x2 = (n-1)*n*(2*n-1)/6;  // sum of {0^2, 1^2, 2^2, ...}
@@ -174,7 +180,7 @@ rcl_collector_on_message(
     }
 
     // recompute size model if the probability is rare
-    if (!collector->traffic_model.initialized || fabs(size - collector->traffic_model.s) > 3*collector->traffic_model.sigma_s) {
+    if (force_update || fabs(size - collector->traffic_model.s) > 3*collector->traffic_model.sigma_s) {
         double n = (collector->tail+(HISTORY_LENGTH+1)-collector->head)%(HISTORY_LENGTH+1);
 
         double sum_x = 0, sum_x2 = 0;
@@ -196,9 +202,10 @@ rcl_collector_on_message(
             ROS_PACKAGE_NAME "_collector", "New size model for %s(%zu): s=%f sigma=%f", collector->topic_name, collector->id, s, sigma);
     }
 
-    collector->traffic_model.initialized = true;
-
     if (model_updated) {
+        collector->traffic_model.initialized = true;
+        collector->traffic_model.last_update = time;
+        // inform application layer collector about the new model
         rcl_interfaces__msg__TrafficModel *msg = rcl_interfaces__msg__TrafficModel__create();
         msg->id = collector->id;
         msg->a = collector->traffic_model.a;
