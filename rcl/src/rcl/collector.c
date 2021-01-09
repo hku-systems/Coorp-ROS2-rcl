@@ -121,12 +121,7 @@ rcl_collector_on_message(
     rcl_collector_t * collector,
     size_t param_size)
 {
-    ++collector->count;
-    if (collector->count <= UNSTABLE)
-        return RCL_RET_OK;
-
     rcl_time_point_value_t param_time;
-
     if (RCL_RET_OK != rcl_clock_get_now(&collector->clock, &param_time)) {
         RCUTILS_SET_ERROR_MSG("Failed to get current time");
         return RCL_RET_ERROR;
@@ -137,6 +132,10 @@ rcl_collector_on_message(
 
     RCUTILS_LOG_DEBUG_NAMED(
         ROS_PACKAGE_NAME "_collector", "On message with size %zu time %f", param_size, time);
+
+    ++collector->count;
+    if (collector->count <= UNSTABLE)
+        return RCL_RET_OK;
 
     // append time log
     if ((collector->tail+1)%(HISTORY_LENGTH+1) == collector->head)
