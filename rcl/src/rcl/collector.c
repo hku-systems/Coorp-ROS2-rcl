@@ -52,7 +52,17 @@ rcl_collector_init(
         sizeof(double)*(HISTORY_LENGTH+1),
         allocator.state);
 
-    collector->id = (uint64_t)rand();
+    // the djb2 hash function found here: http://www.cse.yorku.ca/~oz/hash.html
+    {
+        unsigned long hash = 5381;
+        int c;
+
+        const char *str = topic_name;
+        while ((c = *str++))
+            hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+        collector->id = hash;
+    }
 
     collector->publisher = rcl_get_zero_initialized_publisher();
     rcl_publisher_options_t options = rcl_publisher_get_default_options();  // TODO: we may need non-default options
