@@ -23,6 +23,7 @@ extern "C"
 
 #include "rcutils/logging_macros.h"
 #include "rcl_interfaces/msg/traffic_model.h"
+#include "rosidl_runtime_c/string_functions.h"
 
 #include "./collector.h"
 
@@ -30,6 +31,7 @@ extern "C"
 #define WARMUP 10
 
 const double MODEL_FRESHNESS = 15;
+const double PREDICTABLE_THRESH = 5e-3;
 
 rcl_collector_t
 rcl_get_zero_initialized_collector()
@@ -52,18 +54,6 @@ rcl_collector_init(
     collector->sizes = allocator.allocate(
         sizeof(double)*(HISTORY_LENGTH+1),
         allocator.state);
-
-    // the djb2 hash function found here: http://www.cse.yorku.ca/~oz/hash.html
-    {
-        unsigned long hash = 5381;
-        int c;
-
-        const char *str = topic_name;
-        while ((c = *str++))
-            hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-        collector->id = hash;
-    }
 
     collector->publisher = rcl_get_zero_initialized_publisher();
     rcl_publisher_options_t options = rcl_publisher_get_default_options();  // TODO: we may need non-default options
@@ -186,7 +176,7 @@ rcl_collector_on_message(
 
         model_updated = true;
         RCUTILS_LOG_DEBUG_NAMED(
-            ROS_PACKAGE_NAME "_collector", "New time model for %s(%zu): a=%f b=%f sigma=%f", collector->topic_name, collector->id, a, b, sigma);
+            ROS_PACKAGE_NAME "_collector", "New time model for %s: a=%f b=%f sigma=%f", collector->topic_name, a, b, sigma);
     }
 
     // recompute size model if the probability is rare
@@ -209,7 +199,7 @@ rcl_collector_on_message(
 
         model_updated = true;
         RCUTILS_LOG_DEBUG_NAMED(
-            ROS_PACKAGE_NAME "_collector", "New size model for %s(%zu): s=%f sigma=%f", collector->topic_name, collector->id, s, sigma);
+            ROS_PACKAGE_NAME "_collector", "New size model for %s: s=%f sigma=%f", collector->topic_name, s, sigma);
     }
 
     if (model_updated) {
@@ -217,7 +207,7 @@ rcl_collector_on_message(
         collector->traffic_model.last_update = time;
         // inform application layer collector about the new model
         rcl_interfaces__msg__TrafficModel *msg = rcl_interfaces__msg__TrafficModel__create();
-        msg->id = collector->id;
+        rosidl_runtime_c__String__assign(&msg->id, collector->topic_name);
         msg->a = collector->traffic_model.a;
         msg->b = collector->traffic_model.b;
         msg->sigma_t = collector->traffic_model.sigma_t;
