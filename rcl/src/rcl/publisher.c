@@ -351,6 +351,7 @@ rcl_publish(
     rcutils_allocator_t allocator = rcutils_get_default_allocator();
     rmw_serialized_message_init(&serialized_message, 0, &allocator);
     if (rmw_serialize(ros_message, publisher->impl->collector->ts, &serialized_message) != RMW_RET_OK) {
+      rmw_serialized_message_fini(&serialized_message);
       RCL_SET_ERROR_MSG(rmw_get_error_string().str);
       return RCL_RET_ERROR;
     }
@@ -358,9 +359,11 @@ rcl_publish(
     rcl_collector_on_message(publisher->impl->collector, serialized_message.buffer_length);
 
     if (rmw_publish_serialized_message(publisher->impl->rmw_handle, &serialized_message, allocation) != RMW_RET_OK) {
+      rmw_serialized_message_fini(&serialized_message);
       RCL_SET_ERROR_MSG(rmw_get_error_string().str);
       return RCL_RET_ERROR;
     }
+    rmw_serialized_message_fini(&serialized_message);
   } else if (rmw_publish(publisher->impl->rmw_handle, ros_message, allocation) != RMW_RET_OK) {
     RCL_SET_ERROR_MSG(rmw_get_error_string().str);
     return RCL_RET_ERROR;
